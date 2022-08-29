@@ -39,6 +39,7 @@ type Sink interface {
 	SetProto(m proto.Message) error
 
 	// view returns a frozen view of the bytes for caching.
+	// 返回缓存内容的视图，保证不会被修改
 	view() (ByteView, error)
 }
 

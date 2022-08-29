@@ -38,6 +38,7 @@ import (
 )
 
 // A Getter loads data for a key.
+// 为回调函数，当缓存未命中时，需要通过该函数获取数据（从数据库或者文件...），
 type Getter interface {
 	// Get returns the value identified by key, populating dest.
 	//
@@ -45,10 +46,14 @@ type Getter interface {
 	// uniquely describe the loaded data, without an implicit
 	// current time, and without relying on cache expiration
 	// mechanisms.
+	// 返回的数据必须是未版本化的。 也就是说，key 必须唯一地描述加载的数据，
+	// 没有隐式的当前时间，并且不依赖于缓存过期机制。
 	Get(ctx context.Context, key string, dest Sink) error
 }
 
 // A GetterFunc implements Getter with a function.
+// 该函数类型实现了上述Getter接口，称为接口型函数
+// 优点就是方便传参时，既可以传入函数作为参数，也可以传入实现了该接口的结构体作为参数
 type GetterFunc func(ctx context.Context, key string, dest Sink) error
 
 func (f GetterFunc) Get(ctx context.Context, key string, dest Sink) error {
@@ -103,6 +108,7 @@ func newGroup(name string, cacheBytes int64, getter Getter, peers PeerPicker) *G
 		cacheBytes: cacheBytes,
 		loadGroup:  &singleflight.Group{},
 	}
+	// 运行RegisterNewGroupHook注册的钩子
 	if fn := newGroupHook; fn != nil {
 		fn(g)
 	}
@@ -111,10 +117,12 @@ func newGroup(name string, cacheBytes int64, getter Getter, peers PeerPicker) *G
 }
 
 // newGroupHook, if non-nil, is called right after a new group is created.
+// 如果不为nil,将在创建一个新的Group后立即调用
 var newGroupHook func(*Group)
 
 // RegisterNewGroupHook registers a hook that is run each time
 // a group is created.
+// 对外的api,注册一个钩子，每次创建一个Group时会自动调用
 func RegisterNewGroupHook(fn func(*Group)) {
 	if newGroupHook != nil {
 		panic("RegisterNewGroupHook called more than once")
@@ -124,6 +132,7 @@ func RegisterNewGroupHook(fn func(*Group)) {
 
 // RegisterServerStart registers a hook that is run when the first
 // group is created.
+// 注册一个钩子，在创建第一个group时运行。
 func RegisterServerStart(fn func()) {
 	if initPeerServer != nil {
 		panic("RegisterServerStart called more than once")
@@ -139,17 +148,19 @@ func callInitPeerServer() {
 
 // A Group is a cache namespace and associated data loaded spread over
 // a group of 1 or more machines.
+// 一个Group是一个缓存命名空间与相关的加载数据，可以分布到一台或多台机器上。
 type Group struct {
 	name       string
 	getter     Getter
 	peersOnce  sync.Once
 	peers      PeerPicker
-	cacheBytes int64 // limit for sum of mainCache and hotCache size
+	cacheBytes int64 // 限制 mainCache 和 hotCache 的缓存大小之和
 
 	// mainCache is a cache of the keys for which this process
 	// (amongst its peers) is authoritative. That is, this cache
 	// contains keys which consistent hash on to this process's
 	// peer number.
+	// 存储与本缓存节点绑定的key
 	mainCache cache
 
 	// hotCache contains keys/values for which this peer is not
@@ -160,16 +171,20 @@ type Group struct {
 	// network card could become the bottleneck on a popular key.
 	// This cache is used sparingly to maximize the total number
 	// of key/value pairs that can be stored globally.
+	// 存储热点的key,非本缓存节点绑定的key 
 	hotCache cache
 
 	// loadGroup ensures that each key is only fetched once
 	// (either locally or remotely), regardless of the number of
 	// concurrent callers.
+	// 确保并发的请求相同的key只发起一次（无论本地或者远程调用）
 	loadGroup flightGroup
 
+	// 内存对齐效果
 	_ int32 // force Stats to be 8-byte aligned on 32-bit platforms
 
 	// Stats are statistics on the group.
+	// 相关统计数据，可以被直接调用
 	Stats Stats
 }
 

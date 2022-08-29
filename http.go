@@ -77,6 +77,7 @@ type HTTPPoolOptions struct {
 // For convenience, it also registers itself as an http.Handler with http.DefaultServeMux.
 // The self argument should be a valid base URL that points to the current server,
 // for example "http://example.net:8000".
+// 构建一个缓存节点，并将自己注册成为一个PeerPicker
 func NewHTTPPool(self string) *HTTPPool {
 	p := NewHTTPPoolOpts(self, nil)
 	http.Handle(p.opts.BasePath, p)

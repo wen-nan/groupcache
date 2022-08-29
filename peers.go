@@ -28,20 +28,25 @@ import (
 type Context = context.Context
 
 // ProtoGetter is the interface that must be implemented by a peer.
+// 表示一个缓存节点，每个缓存节点必须实现该接口
 type ProtoGetter interface {
 	Get(ctx context.Context, in *pb.GetRequest, out *pb.GetResponse) error
 }
 
 // PeerPicker is the interface that must be implemented to locate
 // the peer that owns a specific key.
+// 用于确定负责key的缓存节点
 type PeerPicker interface {
 	// PickPeer returns the peer that owns the specific key
 	// and true to indicate that a remote peer was nominated.
 	// It returns nil, false if the key owner is the current peer.
+	// PickPeer 返回指定key的缓存节点ProtoGetter,并返回true表示远程节点。 
+	// 如果key的所有者是当前缓存节点，则返回 nil，false。
 	PickPeer(key string) (peer ProtoGetter, ok bool)
 }
 
 // NoPeers is an implementation of PeerPicker that never finds a peer.
+// 是PeerPicker接口的一个实现，永远不会找到对应key的缓存节点
 type NoPeers struct{}
 
 func (NoPeers) PickPeer(key string) (peer ProtoGetter, ok bool) { return }
@@ -54,6 +59,7 @@ var (
 // It is called once, when the first group is created.
 // Either RegisterPeerPicker or RegisterPerGroupPeerPicker should be
 // called exactly once, but not both.
+// 注册一个缓存节点的初始化函数。仅在第一个group创建时被调用一次。
 func RegisterPeerPicker(fn func() PeerPicker) {
 	if portPicker != nil {
 		panic("RegisterPeerPicker called more than once")
@@ -66,6 +72,7 @@ func RegisterPeerPicker(fn func() PeerPicker) {
 // It is called once, when the first group is created.
 // Either RegisterPeerPicker or RegisterPerGroupPeerPicker should be
 // called exactly once, but not both.
+// 采用groupName来选择缓存节点
 func RegisterPerGroupPeerPicker(fn func(groupName string) PeerPicker) {
 	if portPicker != nil {
 		panic("RegisterPeerPicker called more than once")
